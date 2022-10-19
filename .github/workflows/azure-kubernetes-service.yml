@@ -1,4 +1,4 @@
-# This workflow will build and push an application to a Azure Kubernetes Service (AKS) cluster when you push your code
+# This workflow will create a new Azure Kubernetes Service (AKS) cluster when you push your code
 #
 # This workflow assumes you have already created the target AKS cluster and have created an Azure Container Registry (ACR)
 # For instructions see:
@@ -25,12 +25,50 @@
 # For more samples to get started with GitHub Action workflows to deploy to Azure, refer to https://github.com/Azure/actions-workflow-samples
 # For more options with the actions used below please refer to https://github.com/Azure/login
 
-name: Build and deploy an app to AKS
+name: Deploy a new AKS cluster
 
 on:
   push:
     branches: [ "main" ]
   workflow_dispatch:
+    inputs:
+      CLUSTER_NAME:
+        description: AKS cluster name
+        required: true
+env:
+  RESOURCE_GROUP: "your-resource-group"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # Checks out the repository this file is in
+      - uses: actions/checkout@v3
+      
+      # Logs in with your Azure credentials
+      - name: Azure login
+        uses: azure/login@v1.4.3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      
+      - name: Deploy environment ${{ github.event.inputs.namespace }}
+        uses: ./
+        with:
+          clusterName: ${{ github.event.inputs.clusterName }}
+          environment: ${{ github.event.inputs.namespace }}
+          syncEnvironment: ${{ github.event.inputs.sourceNamespace }}
+          flyway-license: ${{ secrets.FLYWAY_LICENSE }}
+          ssh-key: ${{ secrets.GHMU_SSHKEY }}
+          helmParameters: ${{ github.event.inputs.parameter }}
+          chartRelease: ${{ github.event.inputs.chartRelease }}
+          mockChartRelease: ${{ github.event.inputs.mockChartRelease }}
+          debug: ${{ github.event.inputs.debug }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+
+
 
 env:
   AZURE_CONTAINER_REGISTRY: "your-azure-container-registry"
@@ -41,10 +79,7 @@ env:
   DEPLOYMENT_MANIFEST_PATH: 'your-deployment-manifest-path'
 
 jobs:
-  buildImage:
-    permissions:
-      contents: read
-      id-token: write
+
     runs-on: ubuntu-latest
     steps:
     # Checks out the repository this file is in
